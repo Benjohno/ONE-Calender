@@ -1,0 +1,41 @@
+{
+  "name": "one-calendar",
+  "version": "1.0.0",
+  "description": "A modern family calendar management system with CalDAV and ICAL support",
+  "main": "index.js",
+  "scripts": {
+    "start": "cd frontend && npm start",
+    "build": "cd frontend && npm run build",
+    "test": "cd frontend && npm test",
+    "eject": "cd frontend && npm run eject",
+    "install-all": "npm install && cd frontend && npm install && cd ../backend && pip install -r requirements.txt"
+  },
+  "keywords": [
+    "calendar",
+    "family",
+    "caldav",
+    "ical",
+    "react",
+    "flask",
+    "typescript",
+    "tailwind"
+  ],
+  "author": "ONE Calendar Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/ONE-Calendar.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/ONE-Calendar/issues"
+  },
+  "homepage": "https://github.com/yourusername/ONE-Calendar#readme",
+  "dependencies": {
+    "react-color": "^2.19.3"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  }
+}

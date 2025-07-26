@@ -1,0 +1,6 @@
+flask
+flask-cors
+caldav
+requests
+python-dateutil
+icalendar
