@@ -155,84 +155,173 @@ const AddCalendarComponent: React.FC<AddCalendarProps> = React.memo(({
 AddCalendarComponent.displayName = 'AddCalendarComponent';
 
 // Add Person Popup Component - Extracted outside to prevent re-renders
-interface AddPersonPopupProps {
+
+
+// Add Person with Calendar Form Component
+const AddPersonWithCalendarForm: React.FC<{
   newPersonName: string;
   setNewPersonName: (name: string) => void;
-  addPerson: () => void;
+  addPersonWithCalendar: (personName: string, calendarData: any) => void;
   setShowAddPerson: (show: boolean) => void;
-}
-
-const AddPersonPopupComponent: React.FC<AddPersonPopupProps> = React.memo(({
+}> = React.memo(({
   newPersonName,
   setNewPersonName,
-  addPerson,
+  addPersonWithCalendar,
   setShowAddPerson
 }) => {
+  const [calendarName, setCalendarName] = useState('');
+  const [calendarUrl, setCalendarUrl] = useState('');
+  const [calendarType, setCalendarType] = useState('ical');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
   const handleCancel = useCallback(() => {
     setShowAddPerson(false);
     setNewPersonName('');
+    setCalendarName('');
+    setCalendarUrl('');
+    setCalendarType('ical');
+    setError('');
   }, [setShowAddPerson, setNewPersonName]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!newPersonName.trim()) {
+      setError('Please enter a person name');
+      return;
+    }
+    if (!calendarName.trim()) {
+      setError('Please enter a calendar name');
+      return;
+    }
+    if (!calendarUrl.trim()) {
+      setError('Please enter a calendar URL');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const calendarData = {
+        name: calendarName,
+        url: calendarUrl,
+        username: calendarType === 'ical' ? 'ical-user' : '',
+        password: '',
+        assigned_person: newPersonName,
+        type: calendarType
+      };
+
+      await addPersonWithCalendar(newPersonName, calendarData);
+      handleCancel();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to add person and calendar');
+    } finally {
+      setLoading(false);
+    }
+  }, [newPersonName, calendarName, calendarUrl, calendarType, addPersonWithCalendar, handleCancel]);
 
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      addPerson();
+      handleSubmit();
     }
-  }, [addPerson]);
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewPersonName(e.target.value);
-  }, [setNewPersonName]);
+  }, [handleSubmit]);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-100
-    ">
-      <div className="bg-white rounded-lg p-6 w-[500px]">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">Add Family Member</h2>
-          <button 
-            onClick={handleCancel}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
-          >
-            ×
-          </button>
+    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-blue-800">Add Family Member with Calendar</h3>
+        <button 
+          onClick={handleCancel}
+          className="text-blue-600 hover:text-blue-800 text-xl"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Person Name *</label>
+          <input
+            type="text"
+            value={newPersonName}
+            onChange={(e) => setNewPersonName(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Enter person name"
+            autoFocus
+          />
         </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Person Name *</label>
-            <input
-              type="text"
-              value={newPersonName}
-              onChange={handleInputChange}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter person name"
-              onKeyPress={handleKeyPress}
-              autoFocus
-            />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Calendar Type *</label>
+          <select
+            value={calendarType}
+            onChange={(e) => setCalendarType(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="ical">ICAL Calendar (Public URL)</option>
+            <option value="caldav">CalDAV Calendar (Private)</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Calendar Name *</label>
+          <input
+            type="text"
+            value={calendarName}
+            onChange={(e) => setCalendarName(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="e.g., Work Calendar, Personal Calendar"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            {calendarType === 'ical' ? 'ICAL URL *' : 'CalDAV URL *'}
+          </label>
+          <input
+            type="text"
+            value={calendarUrl}
+            onChange={(e) => setCalendarUrl(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder={calendarType === 'ical' ? 'https://calendar.google.com/.../basic.ics' : 'https://caldav.icloud.com/...'}
+            onKeyPress={handleKeyPress}
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            {calendarType === 'ical' 
+              ? 'Public ICAL/ICS calendar URL (ends with .ics)'
+              : 'CalDAV server URL with username/password'
+            }
+          </p>
+        </div>
+
+        {error && (
+          <div className="text-red-600 text-sm bg-red-50 p-2 rounded">
+            {error}
           </div>
-        </div>
+        )}
+      </div>
 
-        <div className="flex justify-end space-x-3 mt-6">
-          <button 
-            onClick={handleCancel}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={addPerson}
-            disabled={!newPersonName.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            Add Person
-          </button>
-        </div>
+      <div className="flex justify-end space-x-3 mt-4">
+        <button 
+          onClick={handleCancel}
+          className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          disabled={loading}
+        >
+          Cancel
+        </button>
+        <button 
+          onClick={handleSubmit}
+          disabled={loading || !newPersonName.trim() || !calendarName.trim() || !calendarUrl.trim()}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? 'Adding...' : 'Add Person & Calendar'}
+        </button>
       </div>
     </div>
   );
 });
 
-AddPersonPopupComponent.displayName = 'AddPersonPopupComponent';
+AddPersonWithCalendarForm.displayName = 'AddPersonWithCalendarForm';
 
 interface Event {
   id: number | string;
@@ -764,15 +853,10 @@ function App() {
   const [editingPerson, setEditingPerson] = useState<string | null>(null);
   const [editPersonName, setEditPersonName] = useState('');
   const calendarRef = useRef<HTMLDivElement>(null);
-  const [personColors, setPersonColors] = useState<{[key: string]: string}>({
-    'PERSON 1': '#ef4444', // red
-    'PERSON 2': '#3b82f6', // blue
-    'PERSON 3': '#10b981', // green
-    'PERSON 4': '#f59e0b', // amber
-    'PERSON 5': '#8b5cf6', // purple
-    'PERSON 6': '#ec4899', // pink
-  });
+  const [personColors, setPersonColors] = useState<{[key: string]: string}>({});
   const [showCalDAVWizard, setShowCalDAVWizard] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true); // default ON
+  const REFRESH_INTERVAL = 30000; // 30 seconds
 
   // Minimum swipe distance (in px)
   const minSwipeDistance = 50;
@@ -1029,41 +1113,65 @@ function App() {
     }
   };
 
-  // Add new person
-  const addPerson = async () => {
-    if (!newPersonName.trim()) {
-      alert('Please enter a person name');
-      return;
-    }
-
+  // Add person with calendar
+  const addPersonWithCalendar = async (personName: string, calendarData: any) => {
     try {
-      console.log('Adding person:', newPersonName.trim());
-      const response = await fetch(`${API_URL}/people`, {
+      // First add the person
+      console.log('Adding person:', personName);
+      const personResponse = await fetch(`${API_URL}/people`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name: newPersonName.trim() }),
+        body: JSON.stringify({ name: personName }),
       });
 
-      console.log('Response status:', response.status);
-      const responseData = await response.json();
-      console.log('Response data:', responseData);
-
-      if (response.ok) {
-        setPeople(prev => [...prev, responseData.name]);
-        setNewPersonName('');
-        setShowAddPerson(false);
-        // Refresh calendars to update person assignments
-        await fetchCalendars();
-        console.log('Person added successfully');
-      } else {
-        console.error('Failed to add person:', responseData);
-        alert(`Failed to add person: ${responseData.error || 'Unknown error'}`);
+      if (!personResponse.ok) {
+        const errorData = await personResponse.json();
+        throw new Error(errorData.error || 'Failed to add person');
       }
+
+      const personData = await personResponse.json();
+      console.log('Person added successfully:', personData);
+
+      // Then add the calendar
+      console.log('Adding calendar:', calendarData);
+      const calendarResponse = await fetch(`${API_URL}/calendars`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(calendarData),
+      });
+
+      if (!calendarResponse.ok) {
+        const errorData = await calendarResponse.json();
+        throw new Error(errorData.error || 'Failed to add calendar');
+      }
+
+      const calendarDataResponse = await calendarResponse.json();
+      console.log('Calendar added successfully:', calendarDataResponse);
+
+      // Update state
+      setPeople(prev => [...prev, personData.name]);
+      setCalendars(prev => [...prev, calendarDataResponse]);
+      
+      // Set a default color for the new person
+      const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+      const colorIndex = people.length % colors.length;
+      setPersonColors(prev => ({
+        ...prev,
+        [personData.name]: colors[colorIndex]
+      }));
+
+      // Refresh data
+      await fetchEvents(currentDate);
+      await fetchCalendars();
+      
+      console.log('Person and calendar added successfully');
     } catch (error) {
-      console.error('Error adding person:', error);
-      alert(`Error adding person: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Error adding person and calendar:', error);
+      throw error;
     }
   };
 
@@ -1143,6 +1251,16 @@ function App() {
     fetchCalendars();
     fetchPeople();
   }, [currentDate]);
+
+  // Auto-refresh effect
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(() => {
+      fetchEvents(currentDate);
+      fetchCalendars();
+    }, REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [autoRefresh, currentDate]);
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -1429,15 +1547,26 @@ function App() {
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold text-gray-800">Family Members</h2>
-              {people.length < 6 && (
+              {!showAddPerson && (
                 <button 
                   onClick={() => setShowAddPerson(true)}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  + Add Person
+                  + Add Person & Calendar
                 </button>
               )}
             </div>
+            
+            {/* Add Person with Calendar Form (inline) */}
+            {showAddPerson && (
+              <AddPersonWithCalendarForm
+                newPersonName={newPersonName}
+                setNewPersonName={setNewPersonName}
+                addPersonWithCalendar={addPersonWithCalendar}
+                setShowAddPerson={setShowAddPerson}
+              />
+            )}
+            
             <div className="space-y-4">
               {people.length === 0 ? (
                 <p className="text-gray-600 text-center py-8">No family members added yet. Click "Add Person" to get started.</p>
@@ -1516,9 +1645,7 @@ function App() {
                   </div>
                 ))
               )}
-              {people.length >= 6 && (
-                <p className="text-gray-500 text-center text-sm">Maximum of 6 family members reached</p>
-              )}
+
             </div>
           </div>
 
@@ -1540,8 +1667,15 @@ function App() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-lg text-gray-700">Auto-refresh calendar</span>
-                <button className="w-16 h-8 bg-blue-600 rounded-full relative">
-                  <div className="w-6 h-6 bg-white rounded-full absolute right-1 top-1 transition-transform"></div>
+                <button
+                  className={`w-16 h-8 rounded-full relative transition-colors ${autoRefresh ? 'bg-blue-600' : 'bg-gray-300'}`}
+                  onClick={() => setAutoRefresh(v => !v)}
+                  title="Toggle auto-refresh"
+                >
+                  <div
+                    className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-transform ${autoRefresh ? 'right-1' : 'left-1'}`}
+                    style={{ left: autoRefresh ? 'calc(100% - 1.75rem)' : '0.25rem' }}
+                  ></div>
                 </button>
               </div>
               <div className="flex items-center justify-between">
@@ -1705,8 +1839,23 @@ function App() {
         </div>
 
         {/* Person columns */}
-        <div className="flex-1 flex">
-          {people.map((person, personIndex) => (
+        {people.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-6xl mb-4">📅</div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome to ONE Calendar!</h2>
+              <p className="text-gray-600 mb-6">Get started by adding your first family member with their calendar.</p>
+              <button 
+                onClick={() => setShowSettings(true)}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg"
+              >
+                ⚙️ Go to Settings
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex">
+            {people.map((person, personIndex) => (
             <div key={person} className="flex-1  last:border-r-0 relative">
               {/* Person header */}
               <div className="h-[100px] bg-gray-10 flex items-center justify-center text-xl text-gray-500 font-medium relative">
@@ -1768,7 +1917,8 @@ function App() {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Footer */}
@@ -1804,15 +1954,7 @@ function App() {
         />
       )}
       
-      {/* Add Person Popup */}
-      {showAddPerson && (
-        <AddPersonPopupComponent
-          newPersonName={newPersonName}
-          setNewPersonName={setNewPersonName}
-          addPerson={addPerson}
-          setShowAddPerson={setShowAddPerson}
-        />
-      )}
+
 
       {/* CalDAV Wizard Popup */}
       <CalDAVWizardComponent

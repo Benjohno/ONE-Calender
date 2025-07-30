@@ -2,11 +2,17 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import caldav
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 import os
 import icalendar
 from urllib.parse import urlparse
+
+def ensure_aware(dt):
+    """Convert naive datetime to timezone-aware (UTC) if needed"""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 app = Flask(__name__)
 CORS(app)
@@ -15,7 +21,7 @@ CORS(app)
 calendar_configs = {}
 
 # Store people list (in production, use a proper database)
-people_list = ["PERSON 1", "PERSON 2", "PERSON 3", "PERSON 4"]
+people_list = []
 
 @app.route('/api/events', methods=['GET'])
 def get_events():
@@ -32,6 +38,7 @@ def get_events():
     
     print(f"Target date: {target_date}")
     print(f"Connected calendars: {len(calendar_configs)}")
+    print(f"Calendar configs: {calendar_configs}")
     
     # Get events from all connected calendars
     all_events = []
@@ -53,15 +60,7 @@ def get_events():
     
     print(f"Total events found: {len(all_events)}")
     
-    # If no calendars are connected, return sample data
-    if not all_events:
-        print("No events found, returning sample data")
-        all_events = [
-            {"id": 1, "title": "Sample Event 1", "start": "2024-07-25T09:00:00", "end": "2024-07-25T10:00:00", "person": "PERSON 1", "calendar_id": "sample"},
-            {"id": 2, "title": "Team Meeting", "start": "2024-07-25T14:00:00", "end": "2024-07-25T15:00:00", "person": "PERSON 2", "calendar_id": "sample"},
-            {"id": 3, "title": "Lunch Break", "start": "2024-07-25T12:00:00", "end": "2024-07-25T13:00:00", "person": "PERSON 3", "calendar_id": "sample"}
-        ]
-    
+    # Return empty array if no events found (no sample data)
     return jsonify(all_events)
 
 @app.route('/api/calendars', methods=['GET'])
@@ -381,9 +380,11 @@ def fetch_ical_events(config, target_date):
         cal = icalendar.Calendar.from_ical(response.content)
         print(f"ICAL calendar parsed successfully")
         
-        # Set date range for the target date
+        # Set date range for the target date (make timezone-aware)
         start_date = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = start_date + timedelta(days=1)
+        start_date = ensure_aware(start_date)
+        end_date = ensure_aware(end_date)
         print(f"Looking for events between {start_date} and {end_date}")
         
         formatted_events = []
@@ -409,6 +410,10 @@ def fetch_ical_events(config, target_date):
                 end_dt = end_time.dt if end_time else start_dt
                 if not hasattr(end_dt, 'hour'):  # It's a date, not datetime
                     end_dt = datetime.combine(end_dt, datetime.max.time())
+                
+                # Ensure both datetimes are timezone-aware
+                start_dt = ensure_aware(start_dt)
+                end_dt = ensure_aware(end_dt)
                 
                 summary = str(component.get('summary', 'Untitled Event'))
                 print(f"Event {total_events}: {summary} ({start_dt} to {end_dt})")
